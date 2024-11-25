@@ -353,6 +353,7 @@ version = "0.1.0"
 dependencies = [
  "aws-config",
  "aws-sdk-ec2",
+ "aws-smithy-runtime-api",
  "tokio",
 ]
 

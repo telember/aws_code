@@ -1,10 +1,10 @@
-use scan_security_group::{scan};
+use clean_security_group::{scan};
 use tokio;
 
-mod scan_security_group;
+mod clean_security_group;
 
 
 #[tokio::main]
 async fn main() -> () {
-    scan().await;
+    scan(false).await;
 }

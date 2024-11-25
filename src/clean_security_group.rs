@@ -48,7 +48,20 @@ async fn get_used_security_groups(client: &Client) -> Result<HashSet<String>, Er
     Ok(used_sgs)
 }
 
-pub async fn scan() {
+async fn remove_security_group(client: &Client, group_id: &str) -> Result<(), Error> {
+    match client.delete_security_group().group_id(group_id).send().await {
+        Ok(_) => {
+            println!("Deleted security group: {}", group_id);
+            Ok(())
+        },
+        Err(e) => {
+            eprintln!("Failed to delete security group {}: {}", group_id, e);
+            Err(e.into())
+        }
+    }
+}
+
+pub async fn scan(remove: bool) {
     let region_provider = RegionProviderChain::default_provider();
     let config = aws_config::from_env().region(region_provider).load().await;
     let client = Client::new(&config);
@@ -62,22 +75,32 @@ pub async fn scan() {
         .iter()
         .filter(|sg| !used_security_groups.contains(&sg.id))
         .collect();
-    
-    println!("\nUnused Security Groups:");
-    println!("{:<20} {:<30} {:<20}", 
+
+    if unused_groups.is_empty() {
+      println!("No unused security groups found.");
+    } else {
+      println!("\nUnused Security Groups:");
+      println!("{:<20} {:<30} {:<20}", 
         "Security Group ID", 
         "Name", 
         "VPC ID"
-    );
-    println!("{}", "-".repeat(70));
-    
-    for sg in unused_groups {
+      );
+      println!("{}", "-".repeat(70));
+      
+      for sg in &unused_groups {
         println!("{:<20} {:<30} {:<20}",
             sg.id,
             sg.name,
             sg.vpc_id
         );
+      }
+      if remove {
+        println!("\nRemoving unused security groups...");
+        for sg in unused_groups {
+            if let Err(e) = remove_security_group(&client, &sg.id).await {
+                eprintln!("Failed to delete security group {}: {}", sg.id, e);
+            }
+        }
+     } 
     }
-    
 }
-
